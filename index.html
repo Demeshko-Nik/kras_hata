@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1720">
+<meta name="description" content="Карта 2- и 3-комнатных новостроек Красноярска под IT-ипотеку: 74 лота в 33 ЖК, цены, ₽ за м², сроки сдачи и платёж при взносе 3,5 млн ₽.">
+<meta property="og:title" content="2–3-комнатные новостройки Красноярска — карта под IT-ипотеку">
+<meta property="og:description" content="74 лота в 33 ЖК: цена, ₽/м², срок сдачи и платёж по IT-ипотеке (6%, взнос 3,5 млн ₽).">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:,">
+<title>2–3-комн. новостройки Красноярска — карта под IT-ипотеку</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{--bg:#0f1720;--panel:#16212c;--line:#26374a;--txt:#e8eef5;--mut:#93a6ba;--acc:#3fa9f5;--peek:64px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-text-size-adjust:100%}
+  #app{display:flex;height:100vh;height:100dvh}
+
+  /* ---------- панель ---------- */
+  #side{width:392px;min-width:392px;background:var(--panel);border-right:1px solid var(--line);
+        display:flex;flex-direction:column;height:100%;overflow:hidden;z-index:900}
+  #grab{display:none}
+  .pad{padding:14px 16px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1}
+  h1{font-size:16px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:12px;margin-bottom:12px}
+  .box{background:#111b24;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .box h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 8px;font-weight:600}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .row label{flex:1;color:var(--mut);font-size:12px}
+  input[type=number]{width:80px;background:#0b131a;border:1px solid var(--line);color:var(--txt);
+    border-radius:7px;padding:6px 8px;font-size:13px}
+  select{background:#0b131a;border:1px solid var(--line);color:var(--txt);border-radius:7px;
+    padding:6px 8px;font-size:13px;width:100%}
+  .chks{display:flex;flex-wrap:wrap;gap:6px}
+  .chk{display:flex;align-items:center;gap:6px;background:#0b131a;border:1px solid var(--line);
+    border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer}
+  .chk input{accent-color:var(--acc);margin:0;width:16px;height:16px}
+  .stat{color:var(--mut);font-size:12px;margin:6px 0 8px}
+  .card{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:8px;
+    background:#111b24;cursor:pointer;transition:border-color .15s}
+  .card:hover{border-color:var(--acc)}
+  .card .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .price{font-size:15px;font-weight:700}
+  .ppm{color:var(--mut);font-size:12px;white-space:nowrap}
+  .name{font-size:13px;margin:3px 0 2px}
+  .meta{color:var(--mut);font-size:12px}
+  .pay{color:#8ee08e;font-size:12px;margin-top:3px}
+  .rooms{display:inline-block;background:#22384d;color:#bfe0ff;border-radius:6px;padding:0 5px;
+    font-size:11px;margin-right:5px}
+  a{color:var(--acc)}
+  .card a{font-size:12px;text-decoration:none}
+  .card a:hover{text-decoration:underline}
+  .dl{display:block;text-align:center;background:#0b131a;border:1px solid var(--line);
+    border-radius:9px;padding:9px;text-decoration:none;font-size:13px;margin-top:4px}
+  .note{color:var(--mut);font-size:11px;margin-top:8px}
+
+  /* ---------- карта ---------- */
+  #map{flex:1;height:100%;background:#0b131a}
+  .legend{position:absolute;z-index:600;left:10px;bottom:24px;background:rgba(17,27,36,.94);
+    border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:11px;color:var(--mut)}
+  .legend div{display:flex;align-items:center;gap:6px;margin-top:3px}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .pin{display:flex;align-items:center;gap:3px;background:var(--c);color:#fff;font-weight:700;
+    font-size:10px;padding:3px 6px;border-radius:11px;border:2px solid rgba(255,255,255,.85);
+    white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer;transform:translate(-50%,-50%)}
+  .pin i{font-style:normal;opacity:.9;font-size:9px}
+  .pin span{background:rgba(0,0,0,.35);border-radius:8px;padding:0 4px;font-size:9px}
+  .leaflet-popup-content{color:#12202c;min-width:300px}
+  .leaflet-popup-content h3{margin:0 0 2px;font-size:15px}
+  .leaflet-popup-content .pdev{color:#5a6b7c;font-size:12px;margin-bottom:6px}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  td,th{border-bottom:1px solid #e2e8ef;padding:4px 5px;text-align:left;vertical-align:top}
+  th{color:#5a6b7c;font-weight:600}
+  .leaflet-popup-content a{color:#0b6bcb}
+
+  /* ---------- верхняя панель (только телефон) ---------- */
+  #topbar{display:none}
+  @media (min-width:861px){ #side{height:100%} }
+
+  /* ---------- телефон ---------- */
+  @media (max-width:860px){
+    #app{flex-direction:column}
+    #topbar{display:flex;align-items:center;gap:8px;height:52px;padding:0 10px;background:#101a24;
+      border-bottom:1px solid var(--line);z-index:1000}
+    #topbar .tt{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;
+      overflow:hidden;text-overflow:ellipsis}
+    #topbar .tt small{display:block;font-weight:400;color:var(--mut);font-size:11px}
+    .seg{background:#0b131a;border:1px solid var(--line);color:var(--txt);border-radius:9px;
+      padding:8px 11px;font-size:12px;min-height:36px}
+    .seg.active{background:#1d4e78;border-color:#2f7fc4;color:#fff}
+    #map{height:calc(100vh - 52px);height:calc(100dvh - 52px);flex:none}
+    #side{position:fixed;left:0;right:0;bottom:0;width:auto;min-width:0;height:auto;
+      max-height:84vh;max-height:84dvh;border-right:none;border-top:1px solid var(--line);
+      border-radius:16px 16px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.45);
+      transition:transform .26s ease;padding-bottom:env(safe-area-inset-bottom)}
+    #grab{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;
+      color:var(--txt);padding:10px 12px 8px;font-size:12px;cursor:grab;text-align:left}
+    #grab .bar{width:38px;height:4px;border-radius:2px;background:#3c5772;flex:none}
+    #grab .gt{flex:1;min-width:0;color:var(--mut);white-space:nowrap;overflow:hidden;
+      text-overflow:ellipsis}
+    #grab .chev{color:var(--mut);font-size:10px}
+    .pad{padding:0 14px 22px}
+    input[type=number],select{font-size:16px;padding:8px}
+    .chk{padding:8px 10px;font-size:13px}
+    .chk input{width:18px;height:18px}
+    .card{padding:11px 12px}
+    .price{font-size:16px}
+    .legend{display:none}
+    .leaflet-popup-content{min-width:0;max-width:86vw}
+    .leaflet-popup-content h3{font-size:14px}
+    table{font-size:11.5px}
+    td,th{padding:3px 4px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="tt">Новостройки Красноярска <small id="tbSub">2–3-комн. · под IT-ипотеку</small></div>
+    <button class="seg active" id="btnMap">Карта</button>
+    <button class="seg" id="btnList">Список <b id="cnt">0</b></button>
+  </header>
+
+  <aside id="side">
+    <button id="grab" aria-label="Развернуть или свернуть панель">
+      <span class="bar"></span>
+      <span class="gt" id="grabTxt">Показать список и фильтры</span>
+      <span class="chev">▲</span>
+    </button>
+    <div class="pad">
+      <h1>2–3-комн. новостройки Красноярска</h1>
+      <div class="sub">Подбор под IT-ипотеку · данные на <b id="built"></b> ·
+        <span id="comps"></span> ЖК · <span id="lots"></span> лотов
+        (<span id="c2"></span> двухкомн. + <span id="c3"></span> трёхкомн.)</div>
+
+      <div class="box">
+        <h2>Параметры ипотеки</h2>
+        <div class="row"><label>Первый взнос, млн ₽</label><input id="dp" type="number" value="3.5" step="0.1" min="0" inputmode="decimal"></div>
+        <div class="row"><label>Ставка, % годовых</label><input id="rate" type="number" value="6" step="0.1" min="0.1" inputmode="decimal"></div>
+        <div class="row"><label>Срок, лет</label><input id="years" type="number" value="30" step="1" min="1" max="30" inputmode="numeric"></div>
+      </div>
+
+      <div class="box">
+        <h2>Комнатность</h2>
+        <div class="chks">
+          <label class="chk"><input type="checkbox" id="r2" checked> 2-комнатные</label>
+          <label class="chk"><input type="checkbox" id="r3" checked> 3-комнатные</label>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>Фильтры</h2>
+        <div class="chks" id="districts"></div>
+        <div class="row" style="margin-top:8px"><label>Цена от, млн ₽</label><input id="pmin" type="number" value="5" step="0.5" inputmode="decimal"></div>
+        <div class="row"><label>Цена до, млн ₽</label><input id="pmax" type="number" value="12.5" step="0.5" inputmode="decimal"></div>
+        <div class="row"><label>Площадь от, м²</label><input id="amin" type="number" value="0" step="5" inputmode="numeric"></div>
+        <div class="chks" style="margin-top:6px">
+          <label class="chk"><input type="checkbox" id="nodone"> без сданных домов</label>
+          <label class="chk"><input type="checkbox" id="fin"> только с отделкой</label>
+        </div>
+        <div class="row" style="margin-top:8px"><label>Сортировка</label>
+          <select id="sort">
+            <option value="price-asc">цена ↑</option>
+            <option value="price-desc">цена ↓</option>
+            <option value="ppm-asc">₽ за м² ↑</option>
+            <option value="area-desc">площадь ↓</option>
+            <option value="rooms-asc">комнат ↑</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="stat" id="stat"></div>
+      <div id="list"></div>
+      <a class="dl" id="dl" href="krasnoyarsk-2-3k-novostroyki.xlsx" download>Скачать таблицу Excel (74 лота) ↓</a>
+      <div class="note">Координаты — OpenStreetMap (Photon), на уровне домов; близкие ЖК слегка разведены,
+      чтобы подписи не накладывались. Цены и наличие — агрегаторы ДомостройРФ, Сибдом, N1, Arevera,
+      Яндекс Недвижимость на 11.10.2026; лоты быстро уходят — проверяйте у застройщика.</div>
+    </div>
+  </aside>
+
+  <div id="map"></div>
+</div>
+
+<div class="legend">
+  <b>Цена, млн ₽</b>
+  <div><span class="dot" style="background:#2e7d32"></span>меньше 7</div>
+  <div><span class="dot" style="background:#7cb342"></span>7 – 8,5</div>
+  <div><span class="dot" style="background:#f9a825"></span>8,5 – 10</div>
+  <div><span class="dot" style="background:#ef6c00"></span>10 – 11</div>
+  <div><span class="dot" style="background:#c62828"></span>больше 11</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+if(!window.L){document.write('<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"><\/script>');}
+</script>
+<script>
+const DATA = {"complexes": [{"name": "Снегири", "lat": 56.117637, "lon": 92.931839, "lots": [{"rooms": 2, "area": 41.5, "floor": "8/14", "price": 5960000, "ppm": 143614, "due": "сдан, II кв. 2026", "finish": "демонстрационная (обои, линолеум)", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-snegiri-8423/", "done": true, "finished": true}, {"rooms": 2, "area": 52.7, "floor": "6/14", "price": 7490000, "ppm": 142125, "due": "сдан, II кв. 2026", "finish": "демонстрационная", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-snegiri-8423/", "done": true, "finished": true}, {"rooms": 2, "area": 63.0, "floor": "11/14", "price": 8090000, "ppm": 128413, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-zhk-snegiri-2/dom-11/2-komnatnaya-kvartira-id1724820", "done": true, "finished": false}, {"rooms": 3, "area": 63.2, "floor": "13/14", "price": 8090000, "ppm": 128006, "due": "сдан, 2024", "finish": "чистовая / получистовая", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-snegiri-rbk-ooo-2687/", "done": true, "finished": true}, {"rooms": 3, "area": 62.5, "floor": "6/14", "price": 8090000, "ppm": 129440, "due": "сдан, 2024", "finish": "чистовая / получистовая", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-snegiri-rbk-ooo-2687/", "done": true, "finished": true}, {"rooms": 3, "area": 60.0, "floor": "8/14", "price": 8200000, "ppm": 136667, "due": "сдан, май 2026", "finish": "отделка от застройщика (обои, линолеум, сантехника)", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-snegiri-8423/", "done": true, "finished": false}, {"rooms": 3, "area": 61.0, "floor": "7/14", "price": 8250000, "ppm": 135246, "due": "сдан, май 2026", "finish": "отделка от застройщика", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-snegiri-8423/", "done": true, "finished": false}], "id": 0, "dev": "СтройДом / СК ООО «РБК» / ООО «СтройДом»", "district": "Советский", "address": "Советский, Солнечный, пр. 60 лет Образования СССР, 44 / Советский, пр. 60 лет Образования СССР / Советский, Солнечный, ул. Соколовская, 52", "rooms": [2, 3]}, {"name": "Биография", "lat": 56.015369, "lon": 93.026218, "lots": [{"rooms": 2, "area": 33.78, "floor": "17/17", "price": 6080400, "ppm": 180000, "due": "3 кв. 2026", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-biografiya-5/dom-2-korpus-1/2-komnatnaya-kvartira-id1797217", "done": false, "finished": false}, {"rooms": 3, "area": 52.21, "floor": "11/17", "price": 8614650, "ppm": 165000, "due": "3 кв. 2026", "finish": "предчистовая", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-biografiya-5/dom-2-korpus-1/3-komnatnaya-kvartira-id1797162", "done": false, "finished": true}], "id": 1, "dev": "Ментал-Плюс / ООО СЗ «Жилинвест» (ГК «Ментал-Плюс»)", "district": "Кировский", "address": "Кировский, ул. Семафорная", "rooms": [2, 3]}, {"name": "Тихие зори", "lat": 55.980259, "lon": 92.800991, "lots": [{"rooms": 2, "area": 41.1, "floor": "16/19", "price": 6534900, "ppm": 159000, "due": "4 кв. 2027", "finish": "без отделки", "url": "https://www.sibdom.ru/stickers/view/3990838/", "done": false, "finished": false}, {"rooms": 3, "area": 56.0, "floor": "5/19", "price": 8680000, "ppm": 155000, "due": "сдан, дек. 2025", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3974361/", "done": true, "finished": false}, {"rooms": 3, "area": 59.2, "floor": "12/19", "price": 9057600, "ppm": 153000, "due": "сдан, дек. 2025", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3990842/", "done": true, "finished": false}, {"rooms": 3, "area": 61.4, "floor": "9/19", "price": 10192400, "ppm": 166000, "due": "4 кв. 2027", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3990839/", "done": false, "finished": false}], "id": 2, "dev": "Красстрой / ГК «Красстрой»", "district": "Свердловский", "address": "Свердловский, ул. Лесников / Свердловский, ул. Лесников, 59 / Свердловский, ул. Лесников, 57", "rooms": [2, 3]}, {"name": "Звездный", "lat": 56.00034, "lon": 93.033761, "lots": [{"rooms": 2, "area": 46.55, "floor": "24/25", "price": 6730000, "ppm": 144576, "due": "4 кв. 2027", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-zvezdnyy/dom-3/2-komnatnaya-kvartira-id2889848", "done": false, "finished": false}], "id": 3, "dev": "ЭкономЖилСтрой / Регион Девелопмент", "district": "Ленинский", "address": "Ленинский, ул. Шевченко", "rooms": [2]}, {"name": "Юдинский", "lat": 56.041542, "lon": 92.738021, "lots": [{"rooms": 3, "area": 60.9, "floor": "2/9", "price": 6869520, "ppm": 112800, "due": "4 кв. 2027", "finish": "без отделки", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-udinskiy-8322/", "done": false, "finished": false}, {"rooms": 3, "area": 58.41, "floor": "2/9", "price": 8154036, "ppm": 139600, "due": "2 кв. 2028", "finish": "без отделки", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-udinskiy-8322/", "done": false, "finished": false}, {"rooms": 3, "area": 60.9, "floor": "4/9", "price": 8501640, "ppm": 139600, "due": "2 кв. 2028", "finish": "без отделки", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-udinskiy-8322/", "done": false, "finished": false}], "id": 4, "dev": "ООО СЗ «Универсалстрой» (Монолитхолдинг)", "district": "Октябрьский", "address": "Октябрьский, Ветлужанка, ул. Становая", "rooms": [3]}, {"name": "Кедр", "lat": 56.056988, "lon": 92.701701, "lots": [{"rooms": 2, "area": 52.4, "floor": "16/19", "price": 7100000, "ppm": 135496, "due": "сдан, дек. 2025", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-kedr/dom-2/2-komnatnaya-kvartira-id1519829", "done": true, "finished": false}, {"rooms": 2, "area": 59.7, "floor": "15/16", "price": 8178900, "ppm": 137000, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-kedr/dom-1/2-komnatnaya-kvartira-id1497008", "done": true, "finished": false}], "id": 5, "dev": "ГК СТМ", "district": "Октябрьский", "address": "Октябрьский, р-н ст. Бугач, ул. Норильская / Октябрьский, ст. Бугач, ул. Норильская", "rooms": [2]}, {"name": "Новый Академгородок", "lat": 55.988438, "lon": 92.78099, "lots": [{"rooms": 2, "area": 48.2, "floor": "10/16", "price": 7200000, "ppm": 149378, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-novyy-akademgorodok/dom-5/2-komnatnaya-kvartira-id1260253", "done": true, "finished": false}, {"rooms": 3, "area": 78.97, "floor": "12/16", "price": 10300000, "ppm": 130429, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-novyy-akademgorodok/dom-5/3-komnatnaya-kvartira-id1260266", "done": true, "finished": false}, {"rooms": 3, "area": 82.08, "floor": "15/16", "price": 11800000, "ppm": 143762, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-novyy-akademgorodok/dom-5/3-komnatnaya-kvartira-id1260282", "done": true, "finished": false}], "id": 6, "dev": "СМ.СИТИ", "district": "Октябрьский", "address": "Октябрьский, Академгородок, 76 / Октябрьский, Академгородок", "rooms": [2, 3]}, {"name": "Три слона", "lat": 56.056063, "lon": 92.706414, "lots": [{"rooms": 2, "area": 55.5, "floor": "17/18", "price": 7326000, "ppm": 132000, "due": "сдан, июнь 2026", "finish": "чистовая от застройщика", "url": "https://www.sibdom.ru/stickers/view/3980585/", "done": true, "finished": true}, {"rooms": 2, "area": 54.0, "floor": "12–15/18", "price": 7560000, "ppm": 140000, "due": "сдан, июнь 2026", "finish": "чистовая от застройщика", "url": "https://www.sibdom.ru/stickers/view/3983382/", "done": true, "finished": true}, {"rooms": 2, "area": 57.6, "floor": "5–14/18", "price": 7718400, "ppm": 134000, "due": "сдан, июнь 2026", "finish": "чистовая от застройщика", "url": "https://www.sibdom.ru/stickers/view/3990868/", "done": true, "finished": true}], "id": 7, "dev": "СЗ «Система»", "district": "Октябрьский", "address": "Октябрьский, Мясокомбинат, ул. Норильская, 70а / Октябрьский, Мясокомбинат, ул. Норильская, 72 / Октябрьский, Мясокомбинат, ул. Норильская, 70", "rooms": [2]}, {"name": "Академик", "lat": 56.001594, "lon": 92.948201, "lots": [{"rooms": 2, "area": 56.0, "floor": "н/д", "price": 7426630, "ppm": 132618, "due": "4 кв. 2028", "finish": "предчистовая («белый куб»)", "url": "https://arevera.ru/buildings/zhk-akademik-novostroika-v-krasnoiarske-vavilova-semafortnaia/", "done": false, "finished": true}, {"rooms": 3, "area": 81.44, "floor": "5/19", "price": 9780000, "ppm": 120088, "due": "4 кв. 2028", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3990166/", "done": false, "finished": false}, {"rooms": 3, "area": 87.11, "floor": "2–7/19", "price": 10474978, "ppm": 120250, "due": "4 кв. 2028", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3991071/", "done": false, "finished": false}], "id": 8, "dev": "ГК «Готика» / ГК ФСК «Готика»", "district": "Кировский", "address": "Кировский, ул. Вавилова, 51Б", "rooms": [2, 3]}, {"name": "Калина Долина", "lat": 56.055524, "lon": 92.752828, "lots": [{"rooms": 2, "area": 45.3, "floor": "17/17", "price": 7474500, "ppm": 165000, "due": "4 кв. 2027", "finish": "н/д (smart-планировка)", "url": "https://www.sibdom.ru/stickers/view/3992040/", "done": false, "finished": false}, {"rooms": 3, "area": 55.3, "floor": "15/17", "price": 8571500, "ppm": 155000, "due": "4 кв. 2026", "finish": "без отделки", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-kalina-dolina/dom-1/3-komnatnaya-kvartira-id2869889", "done": false, "finished": false}], "id": 9, "dev": "«Арбан» / ГК «Арбан»", "district": "Октябрьский", "address": "Октябрьский, ул. Калинина, 98", "rooms": [2, 3]}, {"name": "Расцветай в Солнечном", "lat": 56.108977, "lon": 92.892772, "lots": [{"rooms": 3, "area": 59.19, "floor": "2/24", "price": 7900000, "ppm": 133468, "due": "4 кв. 2028", "finish": "без отделки", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-rascvetay-v-solnechnom-22408/", "done": false, "finished": false}, {"rooms": 3, "area": 59.15, "floor": "10/24", "price": 8100000, "ppm": 136940, "due": "4 кв. 2028", "finish": "без отделки", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-rascvetay-v-solnechnom-22408/", "done": false, "finished": false}], "id": 10, "dev": "ГК «Расцветай»", "district": "Советский", "address": "Советский, Нанжуль-Солнечный, ул. Черёмуховая", "rooms": [3]}, {"name": "КБС. Классика", "lat": 56.045895, "lon": 92.777936, "lots": [{"rooms": 2, "area": 56.6, "floor": "7/17", "price": 8350000, "ppm": 147527, "due": "4 кв. 2026", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-klassika/dom-5-2-20/2-komnatnaya-kvartira-id4336251", "done": false, "finished": false}, {"rooms": 2, "area": 62.6, "floor": "13/17", "price": 8700000, "ppm": 138978, "due": "4 кв. 2026", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-klassika/dom-5-2-20/2-komnatnaya-kvartira-id4336302", "done": false, "finished": false}, {"rooms": 3, "area": 75.3, "floor": "17/17", "price": 9750000, "ppm": 129482, "due": "4 кв. 2026 (готовность ~92%)", "finish": "под ключ от застройщика", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-klassika/dom-5-2-20/3-komnatnaya-kvartira-id4336339", "done": false, "finished": false}], "id": 11, "dev": "Культбытстрой / ООО СЗ «КБС-Домино» (ГК «Культбытстрой»)", "district": "Октябрьский", "address": "Октябрьский, ул. Калинина", "rooms": [2, 3]}, {"name": "Звезда", "lat": 56.030843, "lon": 93.022926, "lots": [{"rooms": 3, "area": 67.0, "floor": "4/12", "price": 8541540, "ppm": 127486, "due": "4 кв. 2027", "finish": "без отделки", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-zvezda-22366/", "done": false, "finished": false}], "id": 12, "dev": "ГК «ДСК» / СЗ «СТК»", "district": "Ленинский", "address": "Ленинский, ул. 26 Бакинских Комиссаров", "rooms": [3]}, {"name": "Аллея Парк", "lat": 56.113905, "lon": 92.898539, "lots": [{"rooms": 2, "area": 68.73, "floor": "3–19/19", "price": 8591250, "ppm": 125000, "due": "2 кв. 2027 (готовность 72%)", "finish": "получистовая («белый куб»)", "url": "https://www.sibdom.ru/stickers/view/3983456/", "done": false, "finished": true}, {"rooms": 2, "area": 73.36, "floor": "2–19/19", "price": 9096640, "ppm": 124000, "due": "2 кв. 2027", "finish": "получистовая («белый куб»)", "url": "https://www.sibdom.ru/stickers/view/3971929/", "done": false, "finished": true}, {"rooms": 3, "area": 81.0, "floor": "4/19", "price": 10217340, "ppm": 126140, "due": "4 кв. 2026", "finish": "н/д", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-alleya-park-12714/", "done": false, "finished": false}], "id": 13, "dev": "ГК ДСК / ГК «ДСК»", "district": "Советский", "address": "Советский, Солнечный, ул. Светлова / Советский, Солнечный (Нанжуль), ул. Светлова", "rooms": [2, 3]}, {"name": "Универс", "lat": 56.013187, "lon": 92.778276, "lots": [{"rooms": 2, "area": 54.5, "floor": "14/14", "price": 9050000, "ppm": 166055, "due": "4 кв. 2026", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3984884/", "done": false, "finished": false}, {"rooms": 2, "area": 54.5, "floor": "10/24", "price": 9156000, "ppm": 168000, "due": "4 кв. 2026", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3980079/", "done": false, "finished": false}], "id": 14, "dev": "ГК СтройИнновация", "district": "Октябрьский", "address": "Октябрьский, пр. Свободный, 66И", "rooms": [2]}, {"name": "Нанжуль-Солнечный", "lat": 56.108205, "lon": 92.900526, "lots": [{"rooms": 3, "area": 70.24, "floor": "14/17", "price": 9271680, "ppm": 132000, "due": "сдан", "finish": "чистовая", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-mikrorayon-nanzhul-solnechnyy/dom-13-2/3-komnatnaya-kvartira-id1501542", "done": true, "finished": true}], "id": 15, "dev": "н/д", "district": "Советский", "address": "Советский, ул. Ольховая, 2А", "rooms": [3]}, {"name": "КБС. Берег", "lat": 55.9837, "lon": 92.828668, "lots": [{"rooms": 3, "area": 65.7, "floor": "5/17", "price": 9355500, "ppm": 142397, "due": "4 кв. 2027", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3972621/", "done": false, "finished": false}, {"rooms": 3, "area": 66.9, "floor": "17/17", "price": 9600000, "ppm": 143498, "due": "2 кв. 2027", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-bereg-2/dom-7-stroenie-5/3-komnatnaya-kvartira-id4347811", "done": false, "finished": false}, {"rooms": 2, "area": 85.1, "floor": "1/17", "price": 11500000, "ppm": 135135, "due": "2 кв. 2027", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-bereg-2/dom-7-stroenie-6/2-komnatnaya-kvartira-id4348008", "done": false, "finished": false}], "id": 16, "dev": "ГК «Культбытстрой» / Культбытстрой", "district": "Свердловский", "address": "Свердловский, ул. Прибойная / Свердловский, ул. Прибойная, 37", "rooms": [2, 3]}, {"name": "Дом на Ульяновском", "lat": 56.053436, "lon": 92.984864, "lots": [{"rooms": 2, "area": 50.0, "floor": "3/23", "price": 9379500, "ppm": 187590, "due": "4 кв. 2029", "finish": "без отделки (опция)", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-dom-na-ulyanovskom-22501/", "done": false, "finished": false}, {"rooms": 3, "area": 78.0, "floor": "3/23", "price": 12952500, "ppm": 166058, "due": "4 кв. 2029", "finish": "без отделки (опция предчистовая/чистовая)", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-dom-na-ulyanovskom-22501/", "done": false, "finished": true}], "id": 17, "dev": "Конструктив Девелопмент / ГК «Конструктив Девелопмент»", "district": "Советский", "address": "Советский, Зелёная Роща, Ульяновский пр-т", "rooms": [2, 3]}, {"name": "Мята", "lat": 56.113905, "lon": 92.903361, "lots": [{"rooms": 3, "area": 71.53, "floor": "2/9", "price": 9650000, "ppm": 134908, "due": "4 кв. 2027", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-myata/dom-3-3-blok-1-3/3-komnatnaya-kvartira-id1674026", "done": false, "finished": false}], "id": 18, "dev": "ГК «Омега»", "district": "Советский", "address": "Советский, ул. Светлова", "rooms": [3]}, {"name": "Небо над Енисеем", "lat": 56.042199, "lon": 92.939103, "lots": [{"rooms": 2, "area": 54.7, "floor": "2/24", "price": 9955400, "ppm": 182000, "due": "4 кв. 2030", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-nebo-nad-eniseem/dom-1/2-komnatnaya-kvartira-id3989953", "done": false, "finished": false}, {"rooms": 2, "area": 58.0, "floor": "3/24", "price": 10150000, "ppm": 175000, "due": "4 кв. 2030", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-nebo-nad-eniseem/dom-1/2-komnatnaya-kvartira-id3990499", "done": false, "finished": false}, {"rooms": 2, "area": 54.9, "floor": "9/24", "price": 10321200, "ppm": 188000, "due": "4 кв. 2030", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-nebo-nad-eniseem/dom-1/2-komnatnaya-kvartira-id3990751", "done": false, "finished": false}, {"rooms": 2, "area": 64.5, "floor": "3/24", "price": 10965000, "ppm": 170000, "due": "4 кв. 2030", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-nebo-nad-eniseem/dom-1/2-komnatnaya-kvartira-id3989967", "done": false, "finished": false}, {"rooms": 2, "area": 72.9, "floor": "2/24", "price": 11299500, "ppm": 155000, "due": "4 кв. 2030", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-nebo-nad-eniseem/dom-1/2-komnatnaya-kvartira-id3990498", "done": false, "finished": false}, {"rooms": 2, "area": 78.5, "floor": "2/24", "price": 11775000, "ppm": 150000, "due": "4 кв. 2030", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-nebo-nad-eniseem/dom-1/2-komnatnaya-kvartira-id3990370", "done": false, "finished": false}, {"rooms": 3, "area": 77.4, "floor": "2/24", "price": 12384000, "ppm": 160000, "due": "4 кв. 2030", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-nebo-nad-eniseem/dom-1/3-komnatnaya-kvartira-id3989959", "done": false, "finished": false}], "id": 19, "dev": "ГК СтройИнновация / ГК «СтройИнновация»", "district": "Советский", "address": "Советский, ул. Партизана Железняка", "rooms": [2, 3]}, {"name": "Космос", "lat": 56.023381, "lon": 92.833878, "lots": [{"rooms": 3, "area": 83.05, "floor": "2/10", "price": 10100000, "ppm": 121613, "due": "сдан, фев. 2026", "finish": "предчистовая", "url": "https://www.sibdom.ru/stickers/view/3983054/", "done": true, "finished": true}, {"rooms": 3, "area": 72.87, "floor": "2/10", "price": 10500000, "ppm": 144092, "due": "сдан, фев. 2026", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3896395/", "done": true, "finished": false}], "id": 20, "dev": "ГК ФСК «Готика»", "district": "Железнодорожный", "address": "Железнодорожный, ул. Маерчака, 33", "rooms": [3]}, {"name": "Эмоушн", "lat": 55.978725, "lon": 92.809401, "lots": [{"rooms": 3, "area": 63.0, "floor": "1/19", "price": 10175200, "ppm": 161511, "due": "сдан", "finish": "получистовая («белый куб»)", "url": "https://krasnoyarsk.n1.ru/zhilye-kompleksy/name-emotion-emoushn-8316/", "done": true, "finished": true}, {"rooms": 2, "area": 65.1, "floor": "16/18", "price": 10561600, "ppm": 162237, "due": "сдан, авг. 2025", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3983439/", "done": true, "finished": false}], "id": 21, "dev": "ООО СЗ ГК «Развитие» / ГК «Развитие»", "district": "Свердловский", "address": "Свердловский, ул. Свердловская, 6е", "rooms": [2, 3]}, {"name": "Николаевские кварталы", "lat": 56.007834, "lon": 92.83408, "lots": [{"rooms": 2, "area": 51.11, "floor": "1/14", "price": 10220000, "ppm": 199961, "due": "3 кв. 2029", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3980007/", "done": false, "finished": false}, {"rooms": 2, "area": 62.79, "floor": "1/14", "price": 10988250, "ppm": 175000, "due": "3 кв. 2029", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3980012/", "done": false, "finished": false}], "id": 22, "dev": "ГК СтройИнновация", "district": "Железнодорожный", "address": "Железнодорожный, мкр Николаевка, Вокзальная", "rooms": [2]}, {"name": "Чижи", "lat": 56.053011, "lon": 92.882127, "lots": [{"rooms": 2, "area": 60.1, "floor": "19/23", "price": 10277100, "ppm": 171000, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-chizhi-2/dom-1-korpus-12/2-komnatnaya-kvartira-id4299560", "done": true, "finished": false}, {"rooms": 2, "area": 58.9, "floor": "2/23", "price": 11308800, "ppm": 192000, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-chizhi-2/dom-1-korpus-34/2-komnatnaya-kvartira-id4300044", "done": true, "finished": false}], "id": 23, "dev": "СМ.СИТИ", "district": "Центральный", "address": "Центральный", "rooms": [2]}, {"name": "Ранвэй (Runway)", "lat": 56.038692, "lon": 92.910363, "lots": [{"rooms": 2, "area": 52.3, "floor": "18/24", "price": 10685569, "ppm": 204313, "due": "сдан, июнь 2026", "finish": "«хорошее состояние»", "url": "https://www.sibdom.ru/stickers/view/3990773/", "done": true, "finished": false}, {"rooms": 3, "area": 65.8, "floor": "13/24", "price": 11756619, "ppm": 178672, "due": "сдан, июнь 2026", "finish": "н/д", "url": "https://realty.yandex.ru/offer/853416378384366042/", "done": true, "finished": false}], "id": 24, "dev": "Сибагропромстрой / АО «Сибагропромстрой»", "district": "Советский", "address": "Советский, Взлётка / Советский, Взлётка, ул. Октябрьская, 4", "rooms": [2, 3]}, {"name": "Хвоя", "lat": 56.027409, "lon": 92.717271, "lots": [{"rooms": 3, "area": 65.49, "floor": "2–5/8", "price": 10700000, "ppm": 163384, "due": "сдан, июль 2025", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3873065/", "done": true, "finished": false}], "id": 25, "dev": "ГК «Омега»", "district": "Октябрьский", "address": "Октябрьский, ул. Елены Стасовой, 82", "rooms": [3]}, {"name": "Айвазовский-Енисей", "lat": 56.040777, "lon": 92.943201, "lots": [{"rooms": 2, "area": 56.0, "floor": "18/23", "price": 10920000, "ppm": 195000, "due": "2 кв. 2028", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-ayvazovskiy-enisey/dom-1/2-komnatnaya-kvartira-id1927014", "done": false, "finished": false}, {"rooms": 3, "area": 84.4, "floor": "2/23", "price": 11816000, "ppm": 140000, "due": "2 кв. 2028", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-ayvazovskiy-enisey/dom-1/3-komnatnaya-kvartira-id1927185", "done": false, "finished": false}], "id": 26, "dev": "н/д / ГК «Ментал-Плюс»", "district": "Советский", "address": "Советский, ул. 3-я Краснодарская", "rooms": [2, 3]}, {"name": "Сказочный", "lat": 55.976524, "lon": 92.896204, "lots": [{"rooms": 3, "area": 94.0, "floor": "2–19/20", "price": 11660000, "ppm": 124043, "due": "сдан, март 2025", "finish": "н/д", "url": "https://www.sibdom.ru/stickers/view/3975305/", "done": true, "finished": false}], "id": 27, "dev": "н/д", "district": "Свердловский", "address": "Свердловский, ул. Матросова, 30в", "rooms": [3]}, {"name": "Перемены", "lat": 55.997667, "lon": 92.938155, "lots": [{"rooms": 3, "area": 79.2, "floor": "5/24", "price": 11684000, "ppm": 147525, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-peremeny/dom-1/3-komnatnaya-kvartira-id1292492", "done": true, "finished": false}], "id": 28, "dev": "ГК «Конструктив Девелопмент»", "district": "Кировский", "address": "Кировский, мкр Мичуринский", "rooms": [3]}, {"name": "Плодово-Ягодный", "lat": 56.024836, "lon": 92.708782, "lots": [{"rooms": 3, "area": 70.73, "floor": "9/17", "price": 12024100, "ppm": 170000, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-zhk-plodovo-yagodnyy/dom-4/3-komnatnaya-kvartira-id884620", "done": true, "finished": false}], "id": 29, "dev": "н/д", "district": "Октябрьский", "address": "Октябрьский, ул. Елены Стасовой", "rooms": [3]}, {"name": "Белый квартал на Спандаряна", "lat": 56.028471, "lon": 92.88983, "lots": [{"rooms": 3, "area": 89.4, "floor": "2/17", "price": 12800000, "ppm": 143177, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-belyy-kvartal-na-spandaryana/dom-2-2/3-komnatnaya-kvartira-id1405015", "done": true, "finished": false}], "id": 30, "dev": "н/д", "district": "Советский", "address": "Советский, ул. Спандаряна", "rooms": [3]}, {"name": "Портовый", "lat": 55.985181, "lon": 92.860261, "lots": [{"rooms": 3, "area": 72.7, "floor": "2/17", "price": 12940600, "ppm": 178000, "due": "сдан", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-na-pashennom/dom-1/3-komnatnaya-kvartira-id1196711", "done": true, "finished": false}], "id": 31, "dev": "н/д", "district": "Свердловский", "address": "Свердловский, ул. Судостроительная", "rooms": [3]}, {"name": "Параплан", "lat": 55.973269, "lon": 92.858057, "lots": [{"rooms": 3, "area": 81.2, "floor": "7/16", "price": 12992000, "ppm": 160000, "due": "1 кв. 2028", "finish": "н/д", "url": "https://krasnoyarsk.domostroyrf.ru/novostroyki/zhk-paraplan/dom-14a/3-komnatnaya-kvartira-id2887627", "done": false, "finished": false}], "id": 32, "dev": "н/д", "district": "Свердловский", "address": "Свердловский, ул. Парашютная", "rooms": [3]}], "districts": ["Железнодорожный", "Кировский", "Ленинский", "Октябрьский", "Свердловский", "Советский", "Центральный"], "built": "11.10.2026", "lots_total": 74, "comps_total": 33, "c2": 35, "c3": 39};
+const S = {dp:3.5, rate:6, years:30, pmin:5, pmax:12.5, amin:0, r2:true, r3:true,
+           nodone:false, fin:false, sort:'price-asc'};
+
+const fmt = n => new Intl.NumberFormat('ru-RU').format(Math.round(n));
+const mln = n => (n/1e6).toFixed(1).replace('.', ',');
+const band = p => p < 7e6 ? '#2e7d32' : p < 8.5e6 ? '#7cb342' : p < 10e6 ? '#f9a825' : p < 11e6 ? '#ef6c00' : '#c62828';
+const pay = p => { const loan = p - S.dp*1e6; if(loan <= 0) return 0;
+  const r = S.rate/100/12, n = S.years*12; return loan*r/(1-Math.pow(1+r,-n)); };
+const isMobile = () => window.matchMedia('(max-width:860px)').matches;
+
+document.getElementById('built').textContent = DATA.built;
+document.getElementById('comps').textContent = DATA.comps_total;
+document.getElementById('lots').textContent = DATA.lots_total;
+document.getElementById('c2').textContent = DATA.c2;
+document.getElementById('c3').textContent = DATA.c3;
+document.getElementById('cnt').textContent = DATA.lots_total;
+document.getElementById('dl').textContent = 'Скачать таблицу Excel (' + DATA.lots_total + ' лота) ↓';
+
+const map = L.map('map', {scrollWheelZoom:true, zoomControl:false, tap:true})
+  .setView([56.035, 92.86], isMobile() ? 11 : 12);
+L.control.zoom({position:'bottomright'}).addTo(map);
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map);
+const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
+L.control.layers({'Схема':osm, 'Спутник':sat}, null, {position:'topright'}).addTo(map);
+
+const markers = {};
+const layer = L.layerGroup().addTo(map);
+const allLots = [];
+DATA.complexes.forEach(c => c.lots.forEach(l => allLots.push(Object.assign({}, l, {cid:c.id}))));
+
+const dbox = document.getElementById('districts');
+DATA.districts.forEach(d => {
+  const el = document.createElement('label');
+  el.className = 'chk';
+  el.innerHTML = '<input type="checkbox" data-d="'+d+'" checked>'+d;
+  dbox.appendChild(el);
+});
+dbox.addEventListener('change', () => { read(); render(); });
+
+/* ---------- нижняя панель на телефоне ---------- */
+const side = document.getElementById('side');
+const grab = document.getElementById('grab');
+let sheetOpen = false, dragY = null, moved = false;
+grab.style.setProperty('touch-action', 'none');
+grab.style.flex = 'none';
+
+function setSheet(open){
+  sheetOpen = open;
+  if(!isMobile()){ side.style.transform = ''; return; }
+  side.style.transform = open ? 'translateY(0)' : 'translateY(calc(100% - var(--peek)))';
+  document.getElementById('btnList').classList.toggle('active', open);
+  document.getElementById('btnMap').classList.toggle('active', !open);
+  grab.querySelector('.chev').textContent = open ? '▼' : '▲';
+}
+grab.addEventListener('click', () => {
+  if(moved){ moved = false; return; }
+  setSheet(!sheetOpen);
+});
+document.getElementById('btnMap').addEventListener('click', () => setSheet(false));
+document.getElementById('btnList').addEventListener('click', () => setSheet(true));
+
+grab.addEventListener('pointerdown', e => {
+  dragY = e.clientY; moved = false; side.style.transition = 'none';
+});
+grab.addEventListener('pointermove', e => {
+  if(dragY === null) return;
+  const dy = e.clientY - dragY;
+  if(Math.abs(dy) > 6) moved = true;
+  if(!moved) return;
+  const closedAt = window.innerHeight * 0.84 - 64;
+  side.style.transform = 'translateY(' + Math.max(0, (sheetOpen ? 0 : closedAt) + dy) + 'px)';
+});
+grab.addEventListener('pointerup', e => {
+  if(dragY === null) return;
+  const dy = e.clientY - dragY;
+  dragY = null;
+  side.style.transition = '';
+  if(moved){ if(dy > 70) setSheet(false); else if(dy < -60) setSheet(true); else setSheet(sheetOpen); }
+});
+grab.addEventListener('pointercancel', () => { dragY = null; side.style.transition = ''; setSheet(sheetOpen); });
+
+window.addEventListener('resize', () => {
+  if(!isMobile()){ side.style.transform = ''; }
+  else { side.style.transition = 'none'; setSheet(sheetOpen); setTimeout(()=>side.style.transition='', 0); }
+});
+setSheet(false);
+
+/* ---------- фильтры и вывод ---------- */
+function visibleLots(){
+  const ds = [...dbox.querySelectorAll('input')].filter(i=>i.checked).map(i=>i.dataset.d);
+  return allLots.filter(l =>
+    ds.includes(DATA.complexes[l.cid].district) &&
+    ((l.rooms === 2 && S.r2) || (l.rooms === 3 && S.r3)) &&
+    l.price >= S.pmin*1e6 && l.price <= S.pmax*1e6 && l.area >= S.amin &&
+    (!S.nodone || !l.done) && (!S.fin || l.finished));
+}
+
+function sorted(ls){
+  const a = ls.slice();
+  if(S.sort === 'price-asc') a.sort((x,y)=>x.price-y.price);
+  if(S.sort === 'price-desc') a.sort((x,y)=>y.price-x.price);
+  if(S.sort === 'ppm-asc') a.sort((x,y)=>x.ppm-y.ppm);
+  if(S.sort === 'area-desc') a.sort((x,y)=>y.area-x.area);
+  if(S.sort === 'rooms-asc') a.sort((x,y)=>x.rooms-y.rooms || x.price-y.price);
+  return a;
+}
+
+function popup(c, ls){
+  let h = '<h3>'+c.name+'</h3><div class="pdev">'+c.dev+' · '+c.district+'<br>'+c.address+'</div>';
+  h += '<table><tr><th>Комн.</th><th>Площадь</th><th>Этаж</th><th>Цена</th><th>₽/м²</th><th>Сдача</th><th>Платёж</th></tr>';
+  ls.forEach(l => {
+    h += '<tr><td>'+l.rooms+'</td><td>'+String(l.area).replace('.',',')+' м²</td><td>'+l.floor+'</td>'+
+         '<td><b>'+fmt(l.price)+' ₽</b></td><td>'+fmt(l.ppm)+'</td><td>'+l.due+'</td><td>'+fmt(pay(l.price))+' ₽</td></tr>';
+    h += '<tr><td colspan="7" style="border:none;padding-top:0"><a href="'+l.url+'" target="_blank" rel="noopener">Открыть объявление →</a> <span style="color:#7b8794">'+l.finish+'</span></td></tr>';
+  });
+  return h + '</table>';
+}
+
+function focusComplex(cid){
+  const c = DATA.complexes[cid], m = markers[cid];
+  if(!m) return;
+  if(isMobile()) setSheet(false);
+  map.flyTo([c.lat, c.lon], isMobile() ? 14 : 15, {duration:.7});
+  setTimeout(()=>m.openPopup(), isMobile() ? 400 : 250);
+}
+
+function render(){
+  layer.clearLayers();
+  Object.keys(markers).forEach(k => delete markers[k]);
+  const ls = sorted(visibleLots());
+
+  const byC = {};
+  ls.forEach(l => { (byC[l.cid] = byC[l.cid] || []).push(l); });
+
+  Object.keys(byC).forEach(cid => {
+    const c = DATA.complexes[cid], ll = byC[cid];
+    const min = Math.min(...ll.map(l=>l.price));
+    const cheapest = ll.find(l => l.price === min);
+    const icon = L.divIcon({className:'', iconSize:null, iconAnchor:[0,0], html:
+      '<div class="pin" style="--c:'+band(min)+'">'+mln(min)+'<i>'+cheapest.rooms+'к</i>'+
+      (ll.length>1?'<span>'+ll.length+'</span>':'')+'</div>'});
+    const m = L.marker([c.lat, c.lon], {icon:icon}).addTo(layer);
+    m.bindPopup(popup(c, ll), {maxWidth: Math.min(470, window.innerWidth - 60)});
+    markers[cid] = m;
+  });
+
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  ls.forEach(l => {
+    const c = DATA.complexes[l.cid];
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = '<div class="top"><span class="price">'+fmt(l.price)+' ₽</span><span class="ppm">'+fmt(l.ppm)+' ₽/м²</span></div>'+
+      '<div class="name"><span class="rooms">'+l.rooms+'-комн</span>'+l.title+'</div>'+
+      '<div class="meta">'+c.district+' · '+String(l.area).replace('.',',')+' м² · этаж '+l.floor+' · '+l.due+(l.finished?' · с отделкой':'')+'</div>'+
+      '<div class="pay">кредит '+fmt(Math.max(0,l.price-S.dp*1e6))+' ₽ · платёж '+fmt(pay(l.price))+' ₽/мес</div>'+
+      '<div style="margin-top:4px"><a href="'+l.url+'" target="_blank" rel="noopener">объявление →</a></div>';
+    d.addEventListener('click', ev => { if(ev.target.tagName !== 'A') focusComplex(l.cid); });
+    list.appendChild(d);
+  });
+
+  const n2 = ls.filter(l=>l.rooms===2).length, n3 = ls.filter(l=>l.rooms===3).length;
+  const txt = ls.length
+    ? 'Показано ' + ls.length + ' лотов (' + n2 + ' двухкомн. + ' + n3 + ' трёхкомн.) в ' +
+      Object.keys(byC).length + ' ЖК · ' + fmt(Math.min(...ls.map(l=>l.price))) + ' – ' +
+      fmt(Math.max(...ls.map(l=>l.price))) + ' ₽'
+    : 'Ничего не найдено — ослабьте фильтры';
+  document.getElementById('stat').textContent = txt;
+  document.getElementById('grabTxt').textContent = ls.length
+    ? ls.length + ' лотов · от ' + mln(Math.min(...ls.map(l=>l.price))) + ' млн ₽'
+    : 'Ничего не найдено';
+  document.getElementById('cnt').textContent = ls.length;
+}
+
+function read(){
+  S.dp = +document.getElementById('dp').value || 0;
+  S.rate = +document.getElementById('rate').value || 6;
+  S.years = Math.min(30, +document.getElementById('years').value || 30);
+  S.pmin = +document.getElementById('pmin').value || 0;
+  S.pmax = +document.getElementById('pmax').value || 99;
+  S.amin = +document.getElementById('amin').value || 0;
+  S.r2 = document.getElementById('r2').checked;
+  S.r3 = document.getElementById('r3').checked;
+  S.nodone = document.getElementById('nodone').checked;
+  S.fin = document.getElementById('fin').checked;
+  S.sort = document.getElementById('sort').value;
+}
+
+['dp','rate','years','pmin','pmax','amin'].forEach(id =>
+  document.getElementById(id).addEventListener('input', () => { read(); render(); }));
+['r2','r3','nodone','fin'].forEach(id =>
+  document.getElementById(id).addEventListener('change', () => { read(); render(); }));
+document.getElementById('sort').addEventListener('change', () => { read(); render(); });
+
+render();
+</script>
+</body>
+</html>
